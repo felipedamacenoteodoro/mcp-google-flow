@@ -1,0 +1,55 @@
+{
+  "name": "flow-studio-mcp",
+  "version": "0.3.0",
+  "description": "MCP server that drives Google Flow (Veo / Nano Banana) through your own signed-in Chrome, with spend guards and a sandboxed file vault.",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run",
+    "start": "node dist/main.js",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "google-flow",
+    "veo",
+    "video-generation",
+    "playwright",
+    "ai-video"
+  ],
+  "author": "Felipe D. Teodoro",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.31.0",
+    "playwright-core": "1.63.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "typescript": "5.9.3",
+    "vitest": "4.0.2"
+  },
+  "type": "module",
+  "bin": {
+    "flow-studio-mcp": "dist/main.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE",
+    "ui-labels.example.json"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/felipedamacenoteodoro/felipedamacenoteodoro-mcp-google-flow.git"
+  },
+  "homepage": "https://github.com/felipedamacenoteodoro/felipedamacenoteodoro-mcp-google-flow#readme",
+  "bugs": {
+    "url": "https://github.com/felipedamacenoteodoro/felipedamacenoteodoro-mcp-google-flow/issues"
+  }
+}
