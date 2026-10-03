@@ -1,6 +1,6 @@
-import { assertAssetIndex, isGridSettled, qualitySpendsCredits } from '../../domain/asset.js';
+import { assertAssetIndex, failedGenerations, isGridSettled, qualitySpendsCredits } from '../../domain/asset.js';
 import type { Asset, DownloadQuality } from '../../domain/asset.js';
-import { InvalidInputError, NotFoundError, PreconditionFailedError, TimeoutError } from '../../domain/errors.js';
+import { GenerationFailedError, InvalidInputError, NotFoundError, PreconditionFailedError, TimeoutError } from '../../domain/errors.js';
 import type { Clock, FileVault, MediaGrid } from '../ports.js';
 import type { Quote, SpendGuard } from '../spend-guard.js';
 
@@ -41,6 +41,13 @@ export class AssetUseCases {
     for (;;) {
       const assets = await this.grid.listAssets();
       if (isGridSettled(assets, expectedTotal)) return assets;
+      const failures = failedGenerations(assets, expectedTotal);
+      if (failures.length > 0) {
+        const reasons = [...new Set(failures.map((f) => f.error ?? 'no reason given'))].join(' | ');
+        throw new GenerationFailedError(
+          `Flow could not finish ${failures.length} generation(s): ${reasons}. Flow does not charge for failed generations; try a different prompt.`,
+        );
+      }
       if (this.clock.now() + pollMs > deadline) {
         const ready = assets.filter((a) => a.ready).length;
         throw new TimeoutError(`Grid has ${assets.length} tile(s), ${ready} ready; expected ${expectedTotal}.`);
@@ -63,6 +70,9 @@ export class AssetUseCases {
 
     if (asset.kind === 'scene') {
       throw new InvalidInputError('Scenes are exported with flow_scene_download.');
+    }
+    if (asset.kind === 'failed') {
+      throw new InvalidInputError(`Tile ${asset.index} is a failed generation and has nothing to download.`);
     }
     // Flow does not show the upscale price before the click; charge the estimate.
     const credits = qualitySpendsCredits(input.quality) ? this.guard.priceOf(null) : 0;
@@ -90,6 +100,7 @@ export class AssetUseCases {
   private async requireReady(index: number): Promise<Asset> {
     const asset = (await this.grid.listAssets()).find((a) => a.index === index);
     if (!asset) throw new NotFoundError(`No tile at index ${index}.`);
+    if (asset.kind === 'failed') throw new PreconditionFailedError(`Tile ${index} is a failed generation: ${asset.error ?? 'no reason given'}.`);
     if (!asset.ready) throw new PreconditionFailedError(`Tile ${index} is still processing.`);
     return asset;
   }

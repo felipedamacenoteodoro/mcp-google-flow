@@ -195,6 +195,36 @@ describe('AssetUseCases', () => {
     await expect(assets.download({ index: 2, quality: 'standard', fileName: 'x', confirm: false })).rejects.toThrow(InvalidInputError);
   });
 
+  it('stops waiting as soon as Flow reports a failed generation', async () => {
+    grid.assets = [
+      { index: 0, kind: 'failed', name: '', ready: false, error: 'Falha ao gerar áudio.' },
+      { index: 1, kind: 'video', name: 'take 1', ready: true },
+    ];
+    await expect(assets.waitUntilSettled(2, 600_000, 30_000)).rejects.toThrow(/Falha ao gerar áudio/);
+  });
+
+  it('ignores an old failure once the expected media is there', async () => {
+    grid.assets = [
+      { index: 0, kind: 'video', name: 'take 2', ready: true },
+      { index: 1, kind: 'failed', name: '', ready: false, error: 'old failure' },
+      { index: 2, kind: 'video', name: 'take 1', ready: true },
+    ];
+    expect(await assets.waitUntilSettled(2, 600_000, 30_000)).toHaveLength(3);
+  });
+
+  it('keeps waiting while something is still rendering, even with a failure on screen', async () => {
+    grid.assets = [
+      { index: 0, kind: 'video', name: '', ready: false },
+      { index: 1, kind: 'failed', name: '', ready: false, error: 'old failure' },
+    ];
+    await expect(assets.waitUntilSettled(2, 60_000, 30_000)).rejects.toThrow(TimeoutError);
+  });
+
+  it('refuses to attach or download a failed tile', async () => {
+    grid.assets = [{ index: 0, kind: 'failed', name: '', ready: false, error: 'Falha.' }];
+    await expect(assets.addToScene(0)).rejects.toThrow(/failed generation/);
+  });
+
   it('times out waiting for an unfinished grid', async () => {
     await expect(assets.waitUntilSettled(3, 60_000, 30_000)).rejects.toThrow(TimeoutError);
   });

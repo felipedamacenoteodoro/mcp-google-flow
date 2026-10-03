@@ -42,7 +42,7 @@ describe('planShots', () => {
   it('orders each prompt: scene, camera, gesture, line, voice, accent, single take', () => {
     const plan = planShots({ ...base, style: solo, cast: [ana], script: 'Ana: [adjusts her glasses] Você sabia disso? [smiles]' });
     const prompt = plan.shots[0]!.prompt;
-    const order = ['looking into the lens', 'Camera:', 'adjusts her glasses, then says: "Você sabia disso?"', 'they smiles', 'Voice: Female voice', 'Speaks Brazilian Portuguese', SINGLE_TAKE];
+    const order = ['looking into the lens', 'Camera:', 'The speaker adjusts her glasses, then says: "Você sabia disso?"', 'After the line, the speaker smiles.', 'Voice: Female voice', 'Speaks Brazilian Portuguese', SINGLE_TAKE];
     const positions = order.map((part) => prompt.indexOf(part));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
@@ -61,7 +61,8 @@ describe('planShots', () => {
       const shot = planShots({ ...base, style: solo, cast: [ana], script }).shots[0]!;
       expect(shot.line).toBe('Não precisa esperar.');
       expect(shot.role).toBe('key-line');
-      expect(shot.prompt).toContain('smiles, then says: "Não precisa esperar."');
+      expect(shot.prompt).toContain('The speaker smiles, then says: "Não precisa esperar."');
+      expect(shot.prompt).not.toMatch(/\bThey says\b|\bthey smiles\b/);
     }
   });
 

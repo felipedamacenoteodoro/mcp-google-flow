@@ -9,8 +9,14 @@ export class FlowMediaGrid implements MediaGrid {
   async listAssets(): Promise<Asset[]> {
     const page = await this.flow.ensureOnGrid();
     await this.flow.dismissOverlays(page);
-    return page.locator(TILE).evaluateAll((tiles) =>
+    return page.locator(TILE).evaluateAll(
+      (tiles, failedPattern) =>
       tiles.map((tile, index) => {
+        const text = ((tile as HTMLElement).innerText || '').replace(/\s+/g, ' ').trim();
+        // A failed generation shows Flow's error text instead of media.
+        if (new RegExp(failedPattern).test(text)) {
+          return { index, kind: 'failed' as const, name: '', ready: false, error: text.replace(new RegExp(failedPattern), '').trim().slice(0, 300) };
+        }
         const kind = tile.querySelector('flow-scene-tile')
           ? ('scene' as const)
           : tile.querySelector('flow-video-tile')
@@ -28,6 +34,7 @@ export class FlowMediaGrid implements MediaGrid {
         const ready = tile.querySelector('img, video') !== null;
         return { index, kind, name, ready };
       }),
+      this.flow.labels.failedTile,
     );
   }
 
@@ -84,9 +91,13 @@ export class FlowMediaGrid implements MediaGrid {
 
   async download(index: number, quality: DownloadQuality, destination: string): Promise<void> {
     const page = await this.flow.ensureOnGrid();
-    if (!(await this.flow.openTileMenu(page, index))) {
-      throw new PreconditionFailedError(`Tile ${index} has no menu yet.`);
+    // A tile that just finished rendering can take a few seconds to get its menu.
+    let opened = false;
+    for (let attempt = 1; attempt <= 4 && !opened; attempt++) {
+      opened = await this.flow.openTileMenu(page, index);
+      if (!opened) await page.waitForTimeout(5_000);
     }
+    if (!opened) throw new PreconditionFailedError(`Tile ${index} has no menu yet.`);
     await this.flow.ui('download menu', () => this.flow.menuItem(page, this.flow.labels.menuDownload).click());
     await page.waitForTimeout(2_500);
 

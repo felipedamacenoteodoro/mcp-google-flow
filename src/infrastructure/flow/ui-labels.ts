@@ -25,6 +25,7 @@ const schema = z
     menuNewScene: z.string(),
     menuIncludeInComposer: z.string(),
     menuDownload: z.string(),
+    failedTile: z.string(), //            pattern matching the first words of a failed generation tile
     navAllMedia: z.string(),
     navScenes: z.string(),
     quality: z.object({ standard: z.string(), '1080p': z.string(), '4k': z.string() }), // 1080p/4k UNVERIFIED
@@ -87,6 +88,7 @@ export const DEFAULT_LABELS: FlowUiLabels = {
   menuNewScene: 'Nova cena',
   menuIncludeInComposer: 'Incluir no comando',
   menuDownload: 'Fazer o download',
+  failedTile: '^(warning\\s+)?(Falha|Failed)\\b',
   navAllMedia: 'Todas as mídias',
   navScenes: 'Cenas',
   quality: { standard: '720p|Tamanho original|Original size', '1080p': '1080p', '4k': '4K' },

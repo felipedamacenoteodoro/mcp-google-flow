@@ -329,9 +329,10 @@ function composePrompt(input: PlanInput, piece: Piece, framing: string, camera: 
   if (silent) {
     lines.push(SILENT);
   } else {
-    const who = layout === 'two-in-frame' ? `The person on the ${positionOf(input.cast, speaker)}` : 'They';
-    lines.push(piece.before ? `${who} ${piece.before}, then says: "${piece.line}"` : `${who} says: "${piece.line}"`);
-    if (piece.after) lines.push(`After the line, they ${piece.after}.`);
+    // Gestures are written in the third person singular ("smiles"), so the subject must be singular too.
+    const who = layout === 'two-in-frame' ? `the person on the ${positionOf(input.cast, speaker)}` : 'the speaker';
+    lines.push(piece.before ? `${capitalize(who)} ${piece.before}, then says: "${piece.line}"` : `${capitalize(who)} says: "${piece.line}"`);
+    if (piece.after) lines.push(`After the line, ${who} ${piece.after}.`);
     if (speaker.voice) lines.push(`Voice: ${voiceLine(speaker.voice)}`);
     lines.push(accentLine(input.language, input.accent));
   }

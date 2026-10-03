@@ -46,3 +46,7 @@ export class FlowUnavailableError extends DomainError {
 export class TimeoutError extends DomainError {
   readonly code = 'TIMEOUT';
 }
+
+export class GenerationFailedError extends DomainError {
+  readonly code = 'GENERATION_FAILED';
+}
