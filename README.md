@@ -6,6 +6,12 @@ An MCP server that lets any MCP client produce videos and images in **Google Flo
 > Independent project, **not affiliated with, endorsed or maintained by Google**. "Google Flow" and "Veo" are trademarks of Google.
 > It automates Flow's web interface on your account. Automation may go against Google's Terms of Service and could lead to limits or suspension of the account. **Use it at your own risk**, ideally with an account separate from your main one. Flow changes its interface without notice; when it does, a tool may stop working until its labels are adjusted (see [When Flow's interface changes](#when-flows-interface-changes)).
 
+## Showcase
+
+[![15 visual styles generated in Google Flow: click to watch the 62-second reel](docs/media/flow-styles-reel.jpg)](docs/media/flow-styles-reel.mp4)
+
+**15 visual styles generated in Google Flow**: food, cinematic, anime, fight scene, brand story, music video, social hook, 3D, motion design, cartoon, comic, product ad, fashion, real estate and product 360. [▶ Watch the 62-second reel](docs/media/flow-styles-reel.mp4).
+
 ## What it does
 
 - **Projects and media**: creates and opens projects, uploads images and videos, lists what is in the grid, waits for renders and downloads with predictable names.
@@ -165,7 +171,7 @@ Ana: [smiles] * Start with the seasonal blend. [nods]
 
 ## Pro version
 
-The Pro version adds **ready-made video formats** on top of this server, each with its own guided slash command: selfie testimonial (UGC), podcast, dualcast, voiceover, product demo, skincare, app demo, fashion, animated product, trend and story. Every format brings its casting, framings, camera plan, rules and the questions to ask, so a complete video comes out of a single conversation.
+The reel above shows what Google Flow can produce. The Pro version gets you there faster: it adds **ready-made video formats** on top of this server, each with its own guided slash command: selfie testimonial (UGC), podcast, dualcast, voiceover, product demo, skincare, app demo, fashion, animated product, trend and story. Every format brings its casting, framings, camera plan, rules and the questions to ask, so a complete video comes out of a single conversation.
 
 Interested? Get in touch:
 
