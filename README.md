@@ -173,6 +173,10 @@ Ana: [smiles] * Start with the seasonal blend. [nods]
 
 The reel above shows what Google Flow can produce. The Pro version gets you there faster: it adds **ready-made video formats** on top of this server, each with its own guided slash command: selfie testimonial (UGC), podcast, dualcast, voiceover, product demo, skincare, app demo, fashion, animated product, trend and story. Every format brings its casting, framings, camera plan, rules and the questions to ask, so a complete video comes out of a single conversation.
 
+[![The 11 Pro video formats, each generated in Google Flow: click to watch the 44-second reel on YouTube](docs/media/pro-formats-reel.jpg)](https://youtube.com/shorts/4D-1cMaVD3Y)
+
+**All 11 Pro formats, generated in Google Flow** with the Pro guided commands. [▶ Watch the 44-second reel on YouTube](https://youtube.com/shorts/4D-1cMaVD3Y).
+
 Interested? Get in touch:
 
 - Email: **felipe.devops@gmail.com**
