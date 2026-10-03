@@ -46,10 +46,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/felipedamacenoteodoro/felipedamacenoteodoro-mcp-google-flow.git"
+    "url": "git+https://github.com/felipedamacenoteodoro/mcp-google-flow.git"
   },
-  "homepage": "https://github.com/felipedamacenoteodoro/felipedamacenoteodoro-mcp-google-flow#readme",
+  "homepage": "https://github.com/felipedamacenoteodoro/mcp-google-flow#readme",
   "bugs": {
-    "url": "https://github.com/felipedamacenoteodoro/felipedamacenoteodoro-mcp-google-flow/issues"
+    "url": "https://github.com/felipedamacenoteodoro/mcp-google-flow/issues"
   }
 }

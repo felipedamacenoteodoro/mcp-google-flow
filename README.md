@@ -1,4 +1,4 @@
-# felipedamacenoteodoro-mcp-google-flow
+# mcp-google-flow
 
 An MCP server that lets any MCP client produce videos and images in **Google Flow** (Veo, Nano Banana, Omni) through **your own signed-in Chrome**, with spending guards and a sandboxed file vault.
 
@@ -17,8 +17,9 @@ An MCP server that lets any MCP client produce videos and images in **Google Flo
 - **Scenes**: builds the timeline, **extends** the video, **edits** a clip with a prompt and exports the whole scene as a single mp4.
 - **Flow tools** (Grid Architect, Stringout Creator, Storyboard Studio, Video Resizer and community tools): opens any of them, reads their controls, fills and clicks them.
 - **Upscale** to 1080p and 4K on download.
+- **Shot planner**: turns a script into ready shot prompts, with the camera chosen by each shot's job, natural gestures, a voice and accent kept identical across clips, and single-take prompts.
 - **Guided slash commands** for 9 base-image jobs, script writing and voice design.
-- **Pro version** with guided video formats and a shot planner (see [Pro version](#pro-version)).
+- **Pro version** with ready-made video formats (see [Pro version](#pro-version)).
 
 **Nothing spends credits without an approved quote.** Every paid action takes two calls: the first prepares everything, shows the price and returns a `quote_id`; only the second, with `confirm: true` and that id, spends.
 
@@ -31,8 +32,8 @@ An MCP server that lets any MCP client produce videos and images in **Google Flo
 ## Installation
 
 ```bash
-git clone https://github.com/felipedamacenoteodoro/felipedamacenoteodoro-mcp-google-flow.git
-cd felipedamacenoteodoro-mcp-google-flow
+git clone https://github.com/felipedamacenoteodoro/mcp-google-flow.git
+cd mcp-google-flow
 npm ci
 npm run build
 ```
@@ -44,7 +45,7 @@ Register it in your MCP client as a stdio server. Most clients accept this confi
   "mcpServers": {
     "flow-studio": {
       "command": "node",
-      "args": ["/absolute/path/to/felipedamacenoteodoro-mcp-google-flow/dist/main.js"]
+      "args": ["/absolute/path/to/mcp-google-flow/dist/main.js"]
     }
   }
 }
@@ -85,7 +86,9 @@ The login is kept in the dedicated profile (`~/.flow-studio-mcp/chrome-profile`)
 | | `flow_scene_edit` | **yes** | Edits the clip with a prompt. |
 | | `flow_scene_download` | no | Exports the whole scene as one mp4. |
 | | `flow_scene_close` | no | Back to the grid. |
-| Images | `flow_image_prompt` | no | Base-image prompt: avatar, identity sheet, outfit, angle, product, app… |
+| Planning | `flow_directing_guide` | no | Layouts, camera moves by purpose, gestures, prompt rules and the review checklist. |
+| | `flow_plan_shots` | no | Script → shots with line, framing, camera, prompt and attachments. |
+| | `flow_image_prompt` | no | Base-image prompt: avatar, identity sheet, outfit, angle, product, app… |
 | Tools | `flow_tool_list` | no | Your tools, Google templates or community tools. |
 | | `flow_tool_open` | no | Opens a tool by name; reuses your copy when one exists. |
 | | `flow_tool_controls` | no | Reads the open tool's controls and their values. |
@@ -132,11 +135,42 @@ The server ships step-by-step flows that clients supporting MCP prompts show as 
 
 The agent leads the conversation one question at a time, shows the quote, generates only after your "yes" and tells you the library name of the result so it can be reused as a reference. `flow_image_prompt` can also be called directly; it does not touch Flow and spends nothing.
 
+## Shot planner
+
+`flow_plan_shots` turns a script into one shot per spoken sentence and writes each prompt in a fixed order: scene → camera → gesture → line → voice → accent → "one continuous take, no cuts". You pick a **layout**:
+
+| Layout | On screen |
+|---|---|
+| `solo` | One person talking to the lens |
+| `two-in-frame` | Both people in every shot; one talks, the other listens with their mouth closed |
+| `alternating` | Each shot shows only whoever is speaking, looking toward the other person |
+| `narration` | Nobody talks on camera; shots illustrate a narration |
+
+What it takes care of:
+
+- **One spoken sentence per shot.** Several sentences in one clip lead to cuts mid-speech.
+- **The camera follows the shot's job:** hook, argument, key line or call to action, e.g. locked on the key line, slow zoom on the face at the close. Framings and camera moves can be overridden per role (see `flow_directing_guide`).
+- **Voice and visual description repeated word for word** in every clip of the same person; the plan warns when a voice is missing.
+- **Two people in frame:** the speaker is named by side (left/right) and only they get a voice. All clips can be animated from one base image with both people (frames mode).
+- **Long scripts:** the plan warns that lip-sync degrades and suggests narration.
+
+Script markers:
+
+```text
+Leo: I never know which coffee to order.
+Ana: [smiles] * Start with the seasonal blend. [nods]
+```
+
+`Name:` sets the speaker, `[gesture]` at the start or end of a line adds a gesture (at most one on each side, written in English), and `*` marks the key line. Spoken lines can be in any language. Each person's voice goes in the cast, as text or as `{gender, age, pitch, texture, delivery}`.
+
 ## Pro version
 
-The Pro version adds guided **video formats** on top of this server: selfie testimonial (UGC), podcast, dualcast, voiceover, product demo, skincare, app demo, fashion, animated product, trend and story. Each one comes with a **shot planner** that turns a script into ready shots (camera chosen by the shot's job, gestures, voice and accent kept identical across clips, single-take prompts, frames from one base image) and a review checklist for every take.
+The Pro version adds **ready-made video formats** on top of this server, each with its own guided slash command: selfie testimonial (UGC), podcast, dualcast, voiceover, product demo, skincare, app demo, fashion, animated product, trend and story. Every format brings its casting, framings, camera plan, rules and the questions to ask, so a complete video comes out of a single conversation.
 
-Interested? Email **felipe.devops@gmail.com**.
+Interested? Get in touch:
+
+- Email: **felipe.devops@gmail.com**
+- WhatsApp: **[+55 21 97274-5771](https://wa.me/5521972745771)**
 
 ## Configuration
 
@@ -184,7 +218,7 @@ The default labels were checked against the Portuguese interface on 2026-09-29: 
 
 ```
 src/
-├── domain/           pure rules: prompt, settings, credits, image jobs, scenes, tools, allowed URL
+├── domain/           pure rules: prompt, settings, credits, shot planner, directing craft, image jobs, scenes, tools
 ├── application/      use cases, ports (one interface per area of Flow) and the spend guard
 ├── infrastructure/   adapters: Chrome/CDP, one class per area of Flow, file vault, logger, config
 ├── interface/mcp/    tool schemas and registration, guided commands

@@ -29,7 +29,7 @@ export function registerHelperPrompts(server: McpServer): void {
           '   - One sentence per line, about 18 words at most per line (one 8-second shot).',
           '   - Two-person formats: prefix each line with the speaker ("Ana: ..."). Mark the key line with a leading "*". Add at most one gesture in brackets at the start or end of a line, written in English ("[smiles]"), since the prompt is in English.',
           '   - Talking scripts stay short (about six lines); for longer ones suggest narration over footage.',
-          '4. Read it back and adjust with the user. Each line becomes one shot prompt for flow_generate or flow_run_shot_list.',
+          '4. Read it back, adjust with the user, then offer to plan it with flow_plan_shots.',
           'Make only claims the user can back up; no invented numbers or testimonials.',
         ]
           .filter(Boolean)
@@ -51,7 +51,7 @@ export function registerHelperPrompts(server: McpServer): void {
           'Ask, one at a time: gender; age bracket; pitch or weight (high, medium, low, deep); texture (smooth, gravelly, breathy, bright); delivery (calm, fast, warm, authoritative, playful).',
           'Comparing with a nearby age helps (e.g. "fuller and more settled than someone in their twenties").',
           'Then ask for the accent: language, city or region, and register (e.g. informal, like friends chatting); offer a neutral accent for broad audiences. A known sound of the accent makes it more reliable.',
-          'Return the voice as one line, e.g. "Female voice, mid-30s, medium pitch, smooth, warm and confident." Tell the user to paste it unchanged into every shot prompt of that person, since rewording it changes the voice between clips.',
+          'Return the voice as one line, e.g. "Female voice, mid-30s, medium pitch, smooth, warm and confident." Tell the user to reuse it unchanged in flow_plan_shots, since rewording it changes the voice between clips.',
           'In two-person formats each person needs a clearly different voice.',
         ].join('\n'),
       ),

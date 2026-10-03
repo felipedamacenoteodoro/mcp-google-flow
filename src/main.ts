@@ -7,6 +7,7 @@ import { CharacterUseCases } from './application/use-cases/characters.js';
 import { GenerationUseCases } from './application/use-cases/generation.js';
 import { LibraryUseCases } from './application/use-cases/library.js';
 import { ImagePlanningUseCases } from './application/use-cases/image-planning.js';
+import { ShotPlanningUseCases } from './application/use-cases/shot-planning.js';
 import { SceneUseCases } from './application/use-cases/scenes.js';
 import { SessionUseCases } from './application/use-cases/session.js';
 import { ToolUseCases } from './application/use-cases/tools.js';
@@ -33,6 +34,7 @@ import { registerGridTools } from './interface/mcp/tools/grid-tools.js';
 import { registerPrompts } from './interface/mcp/prompts/index.js';
 import { registerLibraryTools } from './interface/mcp/tools/library-tools.js';
 import { registerImagePlanningTools } from './interface/mcp/tools/image-planning-tools.js';
+import { registerShotPlanningTools } from './interface/mcp/tools/shot-planning-tools.js';
 import { registerSceneTools } from './interface/mcp/tools/scene-tools.js';
 import { registerSessionTools } from './interface/mcp/tools/session-tools.js';
 import { registerToolHostTools } from './interface/mcp/tools/tool-host-tools.js';
@@ -70,6 +72,7 @@ async function main(): Promise<void> {
   registerSceneTools(runtime, new SceneUseCases(grid, new FlowSceneEditor(flow), vault, guard));
   registerToolHostTools(runtime, new ToolUseCases(new FlowToolHost(flow), guard));
   registerImagePlanningTools(runtime, new ImagePlanningUseCases());
+  registerShotPlanningTools(runtime, new ShotPlanningUseCases());
   registerPrompts(server);
 
   const shutdown = () => void browser.dispose().finally(() => process.exit(0));
