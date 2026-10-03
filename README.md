@@ -8,9 +8,9 @@ An MCP server that lets any MCP client produce videos and images in **Google Flo
 
 ## Showcase
 
-[![15 visual styles generated in Google Flow: click to watch the 62-second reel](docs/media/flow-styles-reel.jpg)](docs/media/flow-styles-reel.mp4)
+[![15 visual styles generated in Google Flow: click to watch the 62-second reel on YouTube](docs/media/flow-styles-reel.jpg)](https://youtube.com/shorts/yJ6sToM3Qn4)
 
-**15 visual styles generated in Google Flow**: food, cinematic, anime, fight scene, brand story, music video, social hook, 3D, motion design, cartoon, comic, product ad, fashion, real estate and product 360. [▶ Watch the 62-second reel](docs/media/flow-styles-reel.mp4).
+**15 visual styles generated in Google Flow**: food, cinematic, anime, fight scene, brand story, music video, social hook, 3D, motion design, cartoon, comic, product ad, fashion, real estate and product 360. [▶ Watch the 62-second reel on YouTube](https://youtube.com/shorts/yJ6sToM3Qn4).
 
 ## What it does
 
