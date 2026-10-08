@@ -1,4 +1,5 @@
 import { assertAssetIndex, failedGenerations, isGridSettled, qualitySpendsCredits } from '../../domain/asset.js';
+import { adviceForFailure } from '../../domain/generation-failure.js';
 import type { Asset, DownloadQuality } from '../../domain/asset.js';
 import { GenerationFailedError, InvalidInputError, NotFoundError, PreconditionFailedError, TimeoutError } from '../../domain/errors.js';
 import type { Clock, FileVault, MediaGrid } from '../ports.js';
@@ -43,9 +44,10 @@ export class AssetUseCases {
       if (isGridSettled(assets, expectedTotal)) return assets;
       const failures = failedGenerations(assets, expectedTotal);
       if (failures.length > 0) {
-        const reasons = [...new Set(failures.map((f) => f.error ?? 'no reason given'))].join(' | ');
+        const reasons = [...new Set(failures.map((f) => f.error ?? 'no reason given'))];
+        const advice = [...new Set(reasons.map(adviceForFailure))].join(' ');
         throw new GenerationFailedError(
-          `Flow could not finish ${failures.length} generation(s): ${reasons}. Flow does not charge for failed generations; try a different prompt.`,
+          `Flow could not finish ${failures.length} generation(s): ${reasons.join(' | ')}. Flow does not charge for failed generations. ${advice}`,
         );
       }
       if (this.clock.now() + pollMs > deadline) {

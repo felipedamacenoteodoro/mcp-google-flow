@@ -1,6 +1,6 @@
 import { assertAssetIndex } from '../../domain/asset.js';
 import { InvalidInputError, PreconditionFailedError } from '../../domain/errors.js';
-import { createGenerationSettings, sameReferences } from '../../domain/generation.js';
+import { createGenerationSettings, MANUAL_SUBMIT_STEP, sameReferences } from '../../domain/generation.js';
 import type {
   AspectRatio,
   GenerationMode,
@@ -8,6 +8,8 @@ import type {
   GenerationSettings,
   PanelState,
   ReferenceCount,
+  SubmitMode,
+  SubmitResult,
   VideoResolution,
 } from '../../domain/generation.js';
 import { resourceQuery } from '../../domain/library.js';
@@ -43,7 +45,10 @@ export interface GenerationInput extends SettingsInput, ShotInput {
 }
 
 export interface GenerationOutcome {
-  status: 'prepared' | 'submitted';
+  /** awaiting_user_click: manual submit mode; the user clicks generate in the Flow window. */
+  status: 'prepared' | 'submitted' | 'awaiting_user_click';
+  /** What the agent should tell the user next, when there is something to do. */
+  nextStep?: string;
   settings: GenerationSettings;
   panel: PanelState;
   references: ReferenceCount;
@@ -67,6 +72,7 @@ export class GenerationUseCases {
     private readonly composer: Composer,
     private readonly library: ResourceLibrary,
     private readonly guard: SpendGuard,
+    private readonly submitMode: SubmitMode = 'auto',
   ) {}
 
   /** Live catalogue of modes, models, ratios, durations and the current price. */
@@ -88,10 +94,10 @@ export class GenerationUseCases {
     const prepared = await this.prepare(input);
     if (!input.confirm) return this.prepared(prepared, this.guard.quote(request, prepared.credits));
 
-    const { creditsCharged } = await this.guard.spend(`generate ${prepared.settings.mode}`, prepared.credits, approval, () =>
+    const { result, creditsCharged } = await this.guard.spend(`generate ${prepared.settings.mode}`, prepared.credits, approval, () =>
       this.submitChecked(prepared.references),
     );
-    return this.submitted(prepared, creditsCharged);
+    return this.submitted(prepared, creditsCharged, result);
   }
 
   /**
@@ -102,6 +108,11 @@ export class GenerationUseCases {
   async runShotList(input: SettingsInput & { shots: ShotInput[]; confirm: boolean; quoteId?: string }): Promise<GenerationOutcome[]> {
     if (input.shots.length === 0 || input.shots.length > MAX_SHOTS) {
       throw new InvalidInputError(`A shot list must have between 1 and ${MAX_SHOTS} shots.`);
+    }
+    if (input.confirm && this.submitMode === 'manual') {
+      throw new InvalidInputError(
+        'Shot lists need automatic submits. In manual submit mode, generate one shot at a time with flow_generate and let the user click each one.',
+      );
     }
     if (input.mode === 'frames' && input.shots.some((shot) => !shot.startFrame)) {
       throw new InvalidInputError('In frames mode every shot needs a startFrame (the base image).');
@@ -122,7 +133,7 @@ export class GenerationUseCases {
       const { creditsCharged } = await this.guard.charge(`shot ${i + 1}`, prepared.credits, () =>
         this.submitChecked(prepared.references),
       );
-      outcomes.push(this.submitted(prepared, creditsCharged));
+      outcomes.push(this.submitted(prepared, creditsCharged, 'clicked'));
     }
     return outcomes;
   }
@@ -147,7 +158,7 @@ export class GenerationUseCases {
     return { settings, panel, references, credits: this.guard.priceOf(panel.creditCost, settings.variants) };
   }
 
-  private async submitChecked(expected: ReferenceCount): Promise<void> {
+  private async submitChecked(expected: ReferenceCount): Promise<SubmitResult> {
     const atSubmit = await this.composer.references();
     if (!sameReferences(atSubmit, expected)) {
       throw new PreconditionFailedError(
@@ -155,15 +166,20 @@ export class GenerationUseCases {
           `expected ${expected.videos} and ${expected.images}. Nothing was submitted.`,
       );
     }
-    await this.composer.submit();
+    return this.composer.submit();
   }
 
   private prepared(p: PreparedRequest, quote: Quote): GenerationOutcome {
     return { status: 'prepared', settings: p.settings, panel: p.panel, references: p.references, quote, creditsCharged: 0, budgetRemaining: this.guard.remaining };
   }
 
-  private submitted(p: PreparedRequest, creditsCharged: number): GenerationOutcome {
-    return { status: 'submitted', settings: p.settings, panel: p.panel, references: p.references, creditsCharged, budgetRemaining: this.guard.remaining };
+  private submitted(p: PreparedRequest, creditsCharged: number, result: SubmitResult): GenerationOutcome {
+    const handed = result === 'handed-to-user';
+    return {
+      status: handed ? 'awaiting_user_click' : 'submitted',
+      ...(handed ? { nextStep: MANUAL_SUBMIT_STEP } : {}),
+      settings: p.settings, panel: p.panel, references: p.references, creditsCharged, budgetRemaining: this.guard.remaining,
+    };
   }
 }
 

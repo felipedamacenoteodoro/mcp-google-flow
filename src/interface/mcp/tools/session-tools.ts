@@ -11,10 +11,16 @@ export function registerSessionTools(rt: ToolRuntime, session: SessionUseCases, 
   }, async () => ok({ ...(await session.status()), creditBudgetRemaining: guard.remaining, creditBudgetLimit: guard.limit }));
 
   defineTool(rt, 'flow_sign_in', {
-    description: 'Opens Flow in the dedicated Chrome profile so the USER signs in by hand. The server never sees or types credentials.',
+    description:
+      'Opens Flow so the USER signs in by hand. With the dedicated profile it opens a plain Chrome window with no automation attached, because Google refuses sign-in in automated browsers. The server never sees or types credentials.',
   }, async () => {
-    await session.signIn();
-    return ok({ message: 'Chrome is open on Flow. Ask the user to sign in, then call flow_session_info.' });
+    const mode = await session.signIn();
+    return ok({
+      message:
+        mode === 'plain-window'
+          ? 'A normal Chrome window is open on Flow. Ask the user to sign in there and then QUIT that Chrome completely (Cmd+Q on Mac, close every window on Windows/Linux). After that, any Flow tool reopens the same profile, already signed in.'
+          : 'Flow is open in your Chrome. Ask the user to sign in there, then call flow_session_info.',
+    });
   });
 
   defineTool(rt, 'flow_list_projects', {

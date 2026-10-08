@@ -106,3 +106,16 @@ export interface GenerationOptions {
   readonly models: string[];
   readonly current: PanelState;
 }
+
+/**
+ * Who presses Flow's generate button. `manual` leaves the final click to the
+ * person at the keyboard: everything is prepared, the Flow window is brought
+ * to the front, and the person clicks.
+ */
+export type SubmitMode = 'auto' | 'manual';
+
+/** What happened at the generate button. */
+export type SubmitResult = 'clicked' | 'handed-to-user';
+
+export const MANUAL_SUBMIT_STEP =
+  'Everything is prepared in the Flow window, which is now in front. Ask the user to click the generate arrow there, then call flow_wait.';

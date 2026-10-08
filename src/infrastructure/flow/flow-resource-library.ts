@@ -1,8 +1,8 @@
 import type { Page } from 'playwright-core';
 import type { ResourceLibrary } from '../../application/ports.js';
-import { NotFoundError } from '../../domain/errors.js';
+import { NotFoundError, PreconditionFailedError } from '../../domain/errors.js';
 import type { Resource, ResourceCategory } from '../../domain/library.js';
-import { FlowPage, OVERLAY, stripIcon } from './flow-page.js';
+import { anyOf, exact, FlowPage, isOneOf, OVERLAY, stripIcon } from './flow-page.js';
 
 /**
  * Flow's resource picker: opened by the composer's "+" button or by typing
@@ -13,7 +13,7 @@ export class FlowResourceLibrary implements ResourceLibrary {
   constructor(private readonly flow: FlowPage) {}
 
   async search(query: string, category: ResourceCategory): Promise<Resource[]> {
-    const page = await this.openPicker();
+    const page = await this.openPicker({ allowFrameSlot: true });
     try {
       await this.selectTab(page, category);
       await this.typeSearch(page, query);
@@ -43,7 +43,7 @@ export class FlowResourceLibrary implements ResourceLibrary {
       }
       await page.locator(`${OVERLAY} [role=option]`).nth(index).click();
       await page.waitForTimeout(1_500);
-      const include = page.locator(`${OVERLAY} button`, { hasText: this.flow.labels.pickerInclude }).first();
+      const include = page.locator(`${OVERLAY} button`, { hasText: anyOf(this.flow.labels.pickerInclude) }).first();
       if ((await include.count()) > 0 && (await include.isVisible())) {
         await include.click();
         await page.waitForTimeout(2_000);
@@ -54,11 +54,26 @@ export class FlowResourceLibrary implements ResourceLibrary {
     }
   }
 
-  private async openPicker(): Promise<Page> {
+  /**
+   * Opens the picker from the prompt box's "+" button. In frames mode Flow
+   * replaces "+" with start/end slots: searching can still go through the
+   * start slot's picker, but attaching cannot (frames take start/end images).
+   */
+  private async openPicker(options: { allowFrameSlot?: boolean } = {}): Promise<Page> {
     const page = await this.flow.ensureOnGrid();
-    await this.flow.ui('add elements', () =>
-      this.flow.byAria(page.locator('flow-prompt-box'), this.flow.labels.addElements).first().click(),
-    );
+    const box = page.locator('flow-prompt-box');
+    const plus = this.flow.byAria(box, this.flow.labels.addElements).first();
+    if ((await plus.count()) > 0) {
+      await plus.click();
+    } else {
+      const startSlot = box.locator('button', { hasText: exact(this.flow.labels.frameStart) }).first();
+      if (!options.allowFrameSlot || (await startSlot.count()) === 0) {
+        throw new PreconditionFailedError(
+          'The prompt box is in frames mode, which takes a start and an end image instead of attachments. Use start_frame/end_frame, or switch to image or video mode.',
+        );
+      }
+      await startSlot.click();
+    }
     await page.waitForTimeout(1_500);
     return page;
   }
@@ -67,7 +82,7 @@ export class FlowResourceLibrary implements ResourceLibrary {
     const label = this.flow.labels.pickerTabs[category];
     const tabs = page.locator(`${OVERLAY} [role=tab]`);
     const names = (await tabs.allInnerTexts()).map(stripIcon);
-    const index = names.indexOf(label);
+    const index = names.findIndex((name) => isOneOf(name, label));
     if (index < 0) return; // Frame pickers show only some tabs; stay on the default one.
     await tabs.nth(index).click();
     await page.waitForTimeout(1_200);
@@ -80,13 +95,12 @@ export class FlowResourceLibrary implements ResourceLibrary {
     await page.waitForTimeout(1_500);
   }
 
-  /** Options read as "name Kind", e.g. "ref06.png Imagem". */
+  /** Options render the name and, on its own line, the kind ("ref06.png" / "Image"); the kind is not always shown. */
   private async options(page: Page): Promise<Resource[]> {
     const texts = await page.locator(`${OVERLAY} [role=option]`).allInnerTexts();
     return texts.map((text) => {
-      const words = text.replace(/\s+/g, ' ').trim().split(' ');
-      const kind = words.length > 1 ? words.pop()! : '';
-      return { name: words.join(' '), kind };
+      const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+      return { name: lines[0] ?? '', kind: lines.length > 1 ? lines.at(-1)! : '' };
     });
   }
 }

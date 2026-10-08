@@ -45,6 +45,24 @@ export class ChromeLauncher {
     }
   }
 
+  /**
+   * Opens the dedicated profile as an ordinary Chrome window, with no DevTools
+   * port and nothing attached. Google refuses to sign in inside a browser that
+   * is being automated, so the password is only ever typed here; once the user
+   * closes this window, launch() reopens the same, now signed-in, profile.
+   */
+  async launchForSignIn(url: string): Promise<void> {
+    await mkdir(this.profileDir, { recursive: true, mode: 0o700 });
+    await chmod(this.profileDir, 0o700);
+    await rm(this.portFile, { force: true });
+    const child = spawn(
+      this.chromePath,
+      [`--user-data-dir=${this.profileDir}`, '--no-first-run', '--no-default-browser-check', url],
+      { detached: true, stdio: 'ignore' },
+    );
+    child.unref();
+  }
+
   async launch(): Promise<string> {
     await mkdir(this.profileDir, { recursive: true, mode: 0o700 });
     await chmod(this.profileDir, 0o700);
@@ -70,7 +88,10 @@ export class ChromeLauncher {
       if (endpoint) return endpoint;
       await this.clock.sleep(250);
     }
-    throw new FlowUnavailableError('Chrome started but did not open a DevTools port within 20s.');
+    throw new FlowUnavailableError(
+      'Chrome did not open a DevTools port within 20s. The Chrome opened by flow_sign_in is probably still running: ' +
+        'ask the user to quit it completely (Cmd+Q on Mac; closing the window is not enough) and try again.',
+    );
   }
 
   private get portFile(): string {

@@ -1,7 +1,7 @@
 import type { MediaGrid, VerifiedFile } from '../../application/ports.js';
 import type { Asset, DownloadQuality } from '../../domain/asset.js';
 import { FlowUnavailableError, InvalidInputError, PreconditionFailedError } from '../../domain/errors.js';
-import { APP_SETTLE_MS, FlowPage, TILE } from './flow-page.js';
+import { anyOf, APP_SETTLE_MS, exact, FlowPage, TILE } from './flow-page.js';
 
 export class FlowMediaGrid implements MediaGrid {
   constructor(private readonly flow: FlowPage) {}
@@ -42,7 +42,7 @@ export class FlowMediaGrid implements MediaGrid {
     const page = await this.flow.ensureOnGrid();
     const label = onlyScenes ? this.flow.labels.navScenes : this.flow.labels.navAllMedia;
     await this.flow.ui(`navigation "${label}"`, () =>
-      page.locator('flow-project-nav-list').getByText(label, { exact: true }).first().click(),
+      page.locator('flow-project-nav-list').getByText(exact(label)).first().click(),
     );
     await page.waitForTimeout(3_000);
   }
@@ -55,13 +55,13 @@ export class FlowMediaGrid implements MediaGrid {
     await page.waitForTimeout(1_200);
     const chooser = page.waitForEvent('filechooser', { timeout: 25_000 });
     await this.flow.ui('upload action', () =>
-      page.locator('button', { hasText: this.flow.labels.uploadAction }).first().click(),
+      page.locator('button', { hasText: anyOf(this.flow.labels.uploadAction) }).first().click(),
     );
     await (await chooser).setFiles(file.absolutePath);
 
     // Video uploads may ask the user to confirm they hold the rights to the footage.
     await page
-      .getByRole('button', { name: this.flow.labels.acceptRights, exact: true })
+      .getByRole('button', { name: exact(this.flow.labels.acceptRights) })
       .first()
       .click({ timeout: 6_000 })
       .catch(() => undefined);

@@ -1,7 +1,7 @@
 import type { ProjectNavigator, WorkspaceStatus } from '../../application/ports.js';
 import type { ProjectSummary } from '../../domain/library.js';
 import { FLOW_ORIGIN, FlowUrl } from '../../domain/project-url.js';
-import { APP_SETTLE_MS, FlowPage, isSignedInUrl } from './flow-page.js';
+import { anyOf, APP_SETTLE_MS, FlowPage, isSignedInUrl } from './flow-page.js';
 
 const MAX_SCROLL_ROUNDS = 60;
 
@@ -17,10 +17,8 @@ export class FlowNavigator implements ProjectNavigator {
     };
   }
 
-  async openSignIn(): Promise<void> {
-    const page = await this.flow.page();
-    await page.goto(FlowUrl.home().href, { waitUntil: 'domcontentloaded' });
-    await page.bringToFront();
+  async openSignIn(): Promise<'own-chrome' | 'plain-window'> {
+    return this.flow.openForSignIn(FlowUrl.home().href);
   }
 
   /** The home page loads projects as you scroll, so keep scrolling until no new card appears. */
@@ -50,7 +48,7 @@ export class FlowNavigator implements ProjectNavigator {
     );
     await page.waitForTimeout(APP_SETTLE_MS);
     // Flow's agent rewrites prompts on its own; keep it off for predictable output.
-    const agent = page.locator('button', { hasText: this.flow.labels.agentToggle }).first();
+    const agent = page.locator('button', { hasText: anyOf(this.flow.labels.agentToggle) }).first();
     if ((await agent.count()) > 0 && (await agent.getAttribute('aria-pressed')) === 'true') {
       await agent.click();
       await page.waitForTimeout(1_000);
@@ -60,7 +58,7 @@ export class FlowNavigator implements ProjectNavigator {
 
   async openProject(url: FlowUrl): Promise<void> {
     const page = await this.flow.page();
-    await page.goto(url.href, { waitUntil: 'domcontentloaded' });
+    await this.flow.open(page, url.href);
     await page.waitForTimeout(APP_SETTLE_MS);
     this.flow.requireSignedIn(page);
   }
@@ -71,7 +69,7 @@ export class FlowNavigator implements ProjectNavigator {
 
   private async goHome() {
     const page = await this.flow.page();
-    await page.goto(FlowUrl.home().href, { waitUntil: 'domcontentloaded' });
+    await this.flow.open(page, FlowUrl.home().href);
     await page.waitForTimeout(APP_SETTLE_MS);
     this.flow.requireSignedIn(page);
     return page;

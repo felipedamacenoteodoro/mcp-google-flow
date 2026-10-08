@@ -1,11 +1,13 @@
 import { InvalidInputError } from '../../domain/errors.js';
+import { MANUAL_SUBMIT_STEP } from '../../domain/generation.js';
 import type { PanelState } from '../../domain/generation.js';
 import { Prompt } from '../../domain/prompt.js';
 import type { CharacterStudio } from '../ports.js';
 import type { Quote, SpendGuard } from '../spend-guard.js';
 
 export interface CharacterOutcome {
-  status: 'prepared' | 'submitted';
+  status: 'prepared' | 'submitted' | 'awaiting_user_click';
+  nextStep?: string;
   panel: PanelState;
   quote?: Quote;
   creditsCharged: number;
@@ -46,10 +48,19 @@ export class CharacterUseCases {
     if (!input.confirm) {
       return { status: 'prepared', panel, quote: this.guard.quote(request, credits), creditsCharged: 0, budgetRemaining: this.guard.remaining };
     }
-    const { creditsCharged } = await this.guard.spend('create character', credits, approval, async () => {
-      await this.studio.submit();
-      await this.studio.leave();
+    const { result, creditsCharged } = await this.guard.spend('create character', credits, approval, async () => {
+      const submitted = await this.studio.submit();
+      // In manual mode the user still has to click on this page, so stay on it.
+      if (submitted === 'clicked') await this.studio.leave();
+      return submitted;
     });
-    return { status: 'submitted', panel, creditsCharged, budgetRemaining: this.guard.remaining };
+    const handed = result === 'handed-to-user';
+    return {
+      status: handed ? 'awaiting_user_click' : 'submitted',
+      ...(handed ? { nextStep: MANUAL_SUBMIT_STEP.replace('then call flow_wait', 'then call flow_find_resources with category "characters"') } : {}),
+      panel,
+      creditsCharged,
+      budgetRemaining: this.guard.remaining,
+    };
   }
 }

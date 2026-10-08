@@ -1,5 +1,6 @@
 import { assertAssetIndex } from '../../domain/asset.js';
 import { InvalidInputError, PreconditionFailedError } from '../../domain/errors.js';
+import { MANUAL_SUBMIT_STEP } from '../../domain/generation.js';
 import type { PanelState } from '../../domain/generation.js';
 import { Prompt } from '../../domain/prompt.js';
 import type { ExtendAvailability, SceneAction, SceneSummary } from '../../domain/scene.js';
@@ -9,7 +10,8 @@ import type { Quote, SpendGuard } from '../spend-guard.js';
 const SAFE_FILE_NAME = /^[\w\-. ]{1,120}$/;
 
 export interface SceneActionOutcome {
-  status: 'prepared' | 'submitted';
+  status: 'prepared' | 'submitted' | 'awaiting_user_click';
+  nextStep?: string;
   action: SceneAction;
   panel: PanelState;
   quote?: Quote;
@@ -54,8 +56,16 @@ export class SceneUseCases {
       const quote = this.guard.quote(request, credits);
       return { status: 'prepared', action: input.action, panel, quote, creditsCharged: 0, budgetRemaining: this.guard.remaining };
     }
-    const { creditsCharged } = await this.guard.spend(`scene ${input.action}`, credits, approval, () => this.editor.submit());
-    return { status: 'submitted', action: input.action, panel, creditsCharged, budgetRemaining: this.guard.remaining };
+    const { result, creditsCharged } = await this.guard.spend(`scene ${input.action}`, credits, approval, () => this.editor.submit());
+    const handed = result === 'handed-to-user';
+    return {
+      status: handed ? 'awaiting_user_click' : 'submitted',
+      ...(handed ? { nextStep: MANUAL_SUBMIT_STEP.replace('then call flow_wait', 'then wait for the clip to finish in the scene') } : {}),
+      action: input.action,
+      panel,
+      creditsCharged,
+      budgetRemaining: this.guard.remaining,
+    };
   }
 
   async download(fileName: string): Promise<{ savedTo: string }> {

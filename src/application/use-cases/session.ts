@@ -9,8 +9,8 @@ export class SessionUseCases {
     return this.navigator.status();
   }
 
-  /** Opens Flow in the dedicated profile so the user signs in by hand. */
-  signIn(): Promise<void> {
+  /** Opens Flow so the user signs in by hand; the server never sees credentials. */
+  signIn(): Promise<'own-chrome' | 'plain-window'> {
     return this.navigator.openSignIn();
   }
 

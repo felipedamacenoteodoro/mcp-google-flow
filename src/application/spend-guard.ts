@@ -23,6 +23,7 @@ export interface PaidOutcome<T> {
 }
 
 const QUOTE_TTL_MS = 10 * 60_000;
+const AUTO_WAIT_MS = 2 * 60_000;
 
 /**
  * The single gate every credit-spending click goes through.
@@ -78,6 +79,12 @@ export class SpendGuard {
   async charge<T>(what: string, credits: number, action: () => Promise<T>): Promise<PaidOutcome<T>> {
     if (credits === 0) return { result: await action(), creditsCharged: 0 };
     this.ledger.authorize(credits, true);
+    // Short spacing waits (e.g. between shots of a list) are absorbed; long ones surface as RATE_LIMITED.
+    const wait = this.limiter.msUntilAvailable();
+    if (wait > 0 && wait <= AUTO_WAIT_MS) {
+      this.logger.info('pacing paid action', { what, waitMs: wait });
+      await this.clock.sleep(wait);
+    }
     this.limiter.take();
     const result = await action();
     this.ledger.record(credits);

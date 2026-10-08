@@ -1,6 +1,6 @@
 {
   "name": "flow-studio-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "MCP server that drives Google Flow (Veo / Nano Banana) through your own signed-in Chrome, with spend guards and a sandboxed file vault.",
   "main": "dist/main.js",
   "scripts": {

@@ -1,7 +1,7 @@
 import type { Page } from 'playwright-core';
 import type { CharacterStudio } from '../../application/ports.js';
 import { InvalidInputError } from '../../domain/errors.js';
-import type { PanelState } from '../../domain/generation.js';
+import type { PanelState, SubmitResult } from '../../domain/generation.js';
 import type { Prompt } from '../../domain/prompt.js';
 import { APP_SETTLE_MS, FlowPage, OVERLAY, stripIcon } from './flow-page.js';
 
@@ -33,12 +33,12 @@ export class FlowCharacterStudio implements CharacterStudio {
     return this.flow.panelState(page, this.modelButton(page));
   }
 
-  async submit(): Promise<void> {
+  async submit(): Promise<SubmitResult> {
     const page = await this.flow.projectPage();
-    await this.flow.ui('character submit', () =>
-      this.flow.byAria(page.locator('flow-character-prompt-box'), this.flow.labels.submit).first().click(),
+    return this.flow.pressGenerate(
+      this.flow.byAria(page.locator('flow-character-prompt-box'), this.flow.labels.submit).first(),
+      'character submit',
     );
-    await page.waitForTimeout(APP_SETTLE_MS);
   }
 
   async leave(): Promise<void> {
@@ -50,7 +50,7 @@ export class FlowCharacterStudio implements CharacterStudio {
     const page = await this.flow.projectPage();
     const target = `${root}${this.flow.labels.characterPath}`;
     if (!page.url().startsWith(target)) {
-      await page.goto(target, { waitUntil: 'domcontentloaded' });
+      await this.flow.open(page, target);
       await page.waitForTimeout(APP_SETTLE_MS);
     }
     return page;

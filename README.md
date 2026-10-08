@@ -59,11 +59,14 @@ Register it in your MCP client as a stdio server. Most clients accept this confi
 
 ### First run
 
-1. Ask the agent to *"call flow_sign_in"*. It opens a Chrome window with **the project's own profile**.
+1. Ask the agent to *"call flow_sign_in"*. It opens a **normal Chrome window, with no automation attached**, on the project's own profile. Google refuses to sign in inside automated browsers, so the sign-in happens here.
 2. Sign in to Google **yourself** in that window. The server never sees or types your password.
-3. Ask for *"flow_session_info"*: it should report `signedIn: true`.
+3. **Quit that Chrome completely** (Cmd+Q on Mac; closing the window is not enough there).
+4. Ask for anything else, e.g. *"flow_new_project"*. The server reopens the same profile, already signed in, and takes it from there.
 
 The login is kept in the dedicated profile (`~/.flow-studio-mcp/chrome-profile`). Your everyday Chrome is never touched or copied.
+
+Flow can be in **Portuguese or English** out of the box. If your Google account uses another language, set `FLOW_MCP_LANGUAGE=en` and Flow opens in English for the server. Don't use browser translation on Flow (see [Troubleshooting](#troubleshooting)).
 
 ## Tools
 
@@ -192,7 +195,10 @@ Everything is set through environment variables, validated at startup:
 | `FLOW_MCP_OUTPUT_DIR` | `~/FlowStudio/output` | Where downloads are saved. |
 | `FLOW_MCP_MAX_CREDITS` | `100` | Credit budget per server session. |
 | `FLOW_MCP_FALLBACK_CREDITS` | `20` | Estimate per variant when Flow shows no price. |
-| `FLOW_MCP_PAID_PER_HOUR` | `20` | Cap on paid actions per hour. |
+| `FLOW_MCP_PAID_PER_HOUR` | `10` | Cap on paid actions per hour. |
+| `FLOW_MCP_MIN_SECONDS_BETWEEN_PAID` | `45` | Minimum pause between two paid actions (shot lists wait automatically). |
+| `FLOW_MCP_SUBMIT` | `auto` | `manual` prepares everything but leaves the final generate click to you (see [Troubleshooting](#troubleshooting)). |
+| `FLOW_MCP_LANGUAGE` | — | Forces Flow's interface language, e.g. `en`. Useful when your Google account is in a language other than Portuguese or English. |
 | `FLOW_MCP_MAX_IMAGE_MB` / `FLOW_MCP_MAX_VIDEO_MB` | `20` / `500` | Maximum upload size. |
 | `FLOW_MCP_HOME` | `~/.flow-studio-mcp` | Dedicated Chrome profile. |
 | `FLOW_MCP_CHROME_PATH` | auto-detected | Path to Chrome. |
@@ -222,7 +228,24 @@ Every piece of interface text the server depends on lives in [`src/infrastructur
 
 Unknown keys are rejected, so a typo never passes silently. See [`ui-labels.example.json`](ui-labels.example.json).
 
-The default labels were checked against the Portuguese interface on 2026-09-29: modes, models, ratios, price, library, characters, scenes, extend, download and tools. Not yet validated: the English interface, the 1080p/4K entries of the download menu, and the clear-prompt button (there is a fallback path).
+Every label accepts alternatives separated by `|`, and the defaults carry both Portuguese and English (e.g. `"Iniciar geração|Start generation"`), so the same install works in either language. An override can add a third language the same way.
+
+The defaults were checked against both languages on 2026-10-08: home, project, navigation, settings panel (modes, ratios, resolution, duration, models, price), start/end frames, resource picker, tile menu, download qualities, characters and tools. In English the scene builder (add clip, extend, download scene) and the video-rights dialog are not yet validated.
+
+## Troubleshooting
+
+**"We noticed unusual activity… You have not been charged"** (*"Notamos uma atividade incomum"*). This comes from Google's abuse protection, not from the server, and Flow does not charge for it. The server does not try to get around it. What helps:
+
+- **Don't translate the Flow page.** Browser translation and other extensions that change pages are the most common trigger. Turn translation off for flow.google.com and use `FLOW_MCP_LANGUAGE=en` instead if your account is in another language.
+- **Slow down.** Generate fewer videos back to back; the defaults already pace paid actions (`FLOW_MCP_MIN_SECONDS_BETWEEN_PAID`, `FLOW_MCP_PAID_PER_HOUR`).
+- **Use Flow normally for a while** in the same Chrome profile, and avoid VPNs.
+- **Click generate yourself:** with `FLOW_MCP_SUBMIT=manual` the server still prepares everything (mode, model, references, prompt, quote) and brings the Flow window to the front; you press the generate arrow, then the agent continues with `flow_wait`. Shot lists need automatic clicks, so in this mode generate one shot at a time.
+
+**"Couldn't sign you in — this browser or app may not be secure."** You signed in inside the automated window. Call `flow_sign_in` again: it now opens a plain Chrome window for signing in.
+
+**"Chrome did not open a DevTools port"** right after signing in. The sign-in Chrome is still running. Quit it completely (Cmd+Q on Mac) and try again.
+
+**A generation fails with "Failed to generate audio".** Flow could not voice the line; it does not charge for it. Try a shorter, simpler line, or the same shot without dialogue.
 
 ## Architecture
 

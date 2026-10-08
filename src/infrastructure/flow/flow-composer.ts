@@ -1,9 +1,9 @@
 import type { Locator, Page } from 'playwright-core';
 import type { Composer } from '../../application/ports.js';
 import { InvalidInputError, PreconditionFailedError } from '../../domain/errors.js';
-import type { GenerationOptions, GenerationSettings, PanelState, ReferenceCount } from '../../domain/generation.js';
+import type { GenerationOptions, GenerationSettings, PanelState, ReferenceCount, SubmitResult } from '../../domain/generation.js';
 import type { Prompt } from '../../domain/prompt.js';
-import { exact, FlowPage, OVERLAY, stripIcon } from './flow-page.js';
+import { alternatives, anyOf, exact, FlowPage, isOneOf, OVERLAY, stripIcon } from './flow-page.js';
 import type { FlowResourceLibrary } from './flow-resource-library.js';
 
 /**
@@ -32,8 +32,9 @@ export class FlowComposer implements Composer {
     }
 
     const pick = (pattern: RegExp) => radios.filter((r) => pattern.test(r));
+    const { modeImage, modeVideo, videoInputFrames, videoInputElements } = this.flow.labels;
     return {
-      modes: pick(new RegExp(`^(${this.flow.labels.modeImage}|${this.flow.labels.modeVideo}|${this.flow.labels.videoInputFrames}|${this.flow.labels.videoInputElements})$`)),
+      modes: radios.filter((r) => [modeImage, modeVideo, videoInputFrames, videoInputElements].some((label) => isOneOf(r, label))),
       aspects: pick(/^\d+:\d+$/),
       resolutions: pick(/^\d+p$/),
       durations: pick(/^\d+s$/),
@@ -117,12 +118,13 @@ export class FlowComposer implements Composer {
   async references(): Promise<ReferenceCount> {
     const page = await this.flow.ensureOnGrid();
     return page.locator('flow-prompt-box img').evaluateAll(
-      (imgs, { altPrefix, videoMarker }) => {
-        const alts = imgs.map((img) => (img as HTMLImageElement).alt).filter((alt) => alt.startsWith(altPrefix));
-        const videos = alts.filter((alt) => alt.includes(videoMarker)).length;
+      (imgs, { prefixes, videoMarker }) => {
+        const marker = new RegExp(videoMarker, 'i');
+        const alts = imgs.map((img) => (img as HTMLImageElement).alt).filter((alt) => prefixes.some((p) => alt.startsWith(p)));
+        const videos = alts.filter((alt) => marker.test(alt)).length;
         return { videos, images: alts.length - videos };
       },
-      { altPrefix: this.flow.labels.referenceAltPrefix, videoMarker: this.flow.labels.referenceVideoMarker },
+      { prefixes: alternatives(this.flow.labels.referenceAltPrefix), videoMarker: anyOf(this.flow.labels.referenceVideoMarker).source },
     );
   }
 
@@ -138,12 +140,9 @@ export class FlowComposer implements Composer {
     await page.waitForTimeout(1_000);
   }
 
-  async submit(): Promise<void> {
+  async submit(): Promise<SubmitResult> {
     const page = await this.flow.ensureOnGrid();
-    await this.flow.ui('submit', () =>
-      this.flow.byAria(page.locator('flow-prompt-box'), this.flow.labels.submit).first().click(),
-    );
-    await page.waitForTimeout(9_000);
+    return this.flow.pressGenerate(this.flow.byAria(page.locator('flow-prompt-box'), this.flow.labels.submit).first(), 'submit');
   }
 
   // ------------------------------------------------------------------ panel
@@ -185,7 +184,7 @@ export class FlowComposer implements Composer {
   private async choose(page: Page, label: string): Promise<void> {
     const radios = page.locator(`${OVERLAY} button[role=radio]`);
     const texts = await this.radioTexts(page);
-    const index = texts.findIndex((text) => text === label);
+    const index = texts.findIndex((text) => isOneOf(text, label));
     if (index < 0) {
       throw new InvalidInputError(`Flow does not offer "${label}" here. Available: ${texts.join(', ')}.`);
     }

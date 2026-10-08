@@ -2,7 +2,7 @@ import type { Frame, Page } from 'playwright-core';
 import type { ToolHost } from '../../application/ports.js';
 import { FlowUnavailableError, NotFoundError, PreconditionFailedError } from '../../domain/errors.js';
 import type { OpenedTool, ToolControl, ToolControlKind, ToolSource, ToolSummary } from '../../domain/tools.js';
-import { APP_SETTLE_MS, FlowPage } from './flow-page.js';
+import { APP_SETTLE_MS, exact, FlowPage } from './flow-page.js';
 
 const TOOL_URL = /\/tool\/[0-9a-f-]{36}/;
 const CONTROL_ID_ATTR = 'data-flow-studio-control';
@@ -106,11 +106,11 @@ export class FlowToolHost implements ToolHost {
     const page = await this.flow.page();
     const target = `${root}${this.flow.labels.toolsPath}`;
     if (page.url().split('?')[0] !== target) {
-      await page.goto(target, { waitUntil: 'domcontentloaded' });
+      await this.flow.open(page, target);
       await page.waitForTimeout(APP_SETTLE_MS);
     }
     await this.flow.ui(`tools tab "${source}"`, () =>
-      page.getByRole('radio', { name: this.flow.labels.toolTabs[source] }).click(),
+      page.getByRole('radio', { name: exact(this.flow.labels.toolTabs[source]) }).click(),
     );
     await page.waitForTimeout(3_000);
     return page;

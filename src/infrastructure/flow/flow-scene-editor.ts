@@ -1,10 +1,10 @@
 import type { Page } from 'playwright-core';
 import type { SceneEditor } from '../../application/ports.js';
 import { NotFoundError, PreconditionFailedError } from '../../domain/errors.js';
-import type { PanelState } from '../../domain/generation.js';
+import type { PanelState, SubmitResult } from '../../domain/generation.js';
 import type { Prompt } from '../../domain/prompt.js';
 import type { ExtendAvailability, SceneAction, SceneSummary } from '../../domain/scene.js';
-import { APP_SETTLE_MS, FlowPage, OVERLAY, TILE } from './flow-page.js';
+import { anyOf, APP_SETTLE_MS, FlowPage, OVERLAY, TILE } from './flow-page.js';
 
 const SCENE_URL = /\/scene\/[0-9a-f-]{36}/;
 const RAIL_NAVIGATION = /^(Mídia anterior|Próxima mídia|Previous media|Next media)$/;
@@ -39,7 +39,7 @@ export class FlowSceneEditor implements SceneEditor {
     const page = await this.scenePage();
     await this.openAddClipMenu(page);
     try {
-      const item = page.locator(`${OVERLAY} [role=menuitem]`, { hasText: this.flow.labels.extendItem }).first();
+      const item = page.locator(`${OVERLAY} [role=menuitem]`, { hasText: anyOf(this.flow.labels.extendItem) }).first();
       if ((await item.count()) === 0) return { available: false, model: null, reason: 'Flow shows no extend option.' };
       const text = (await item.innerText()).replace(/\s+/g, ' ');
       const model = /\(([^)]+)\)/.exec(text)?.[1] ?? null;
@@ -59,7 +59,7 @@ export class FlowSceneEditor implements SceneEditor {
     if (action === 'extend') {
       await this.openAddClipMenu(page);
       await this.flow.ui('extend', () =>
-        page.locator(`${OVERLAY} [role=menuitem]`, { hasText: this.flow.labels.extendItem }).first().click(),
+        page.locator(`${OVERLAY} [role=menuitem]`, { hasText: anyOf(this.flow.labels.extendItem) }).first().click(),
       );
       await page.waitForTimeout(3_000);
     }
@@ -67,11 +67,10 @@ export class FlowSceneEditor implements SceneEditor {
     return this.flow.panelState(page, this.activeBox(page, action));
   }
 
-  async submit(): Promise<void> {
+  async submit(): Promise<SubmitResult> {
     const page = await this.scenePage();
-    const button = page.locator('flow-base-prompt-box').last().locator(`button[aria-label=${JSON.stringify(this.flow.labels.submit)}]`);
-    await this.flow.ui('scene submit', () => button.first().click());
-    await page.waitForTimeout(APP_SETTLE_MS);
+    const button = this.flow.byAria(page.locator('flow-base-prompt-box').last(), this.flow.labels.submit);
+    return this.flow.pressGenerate(button.first(), 'scene submit');
   }
 
   async download(destination: string): Promise<void> {

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { stripIcon } from '../../src/infrastructure/flow/flow-page.js';
+import { alternatives, anyOf, exact, isOneOf, stripIcon } from '../../src/infrastructure/flow/flow-page.js';
 import { DEFAULT_LABELS } from '../../src/infrastructure/flow/ui-labels.js';
 
 describe('stripIcon', () => {
@@ -15,6 +15,30 @@ describe('stripIcon', () => {
     ['volume_up Omni 1.1 Flash', 'Omni 1.1 Flash'],
   ])('%s -> %s', (raw, expected) => {
     expect(stripIcon(raw)).toBe(expected);
+  });
+});
+
+describe('bilingual labels', () => {
+  it('splits alternatives', () => {
+    expect(alternatives('Iniciar geração|Start generation')).toEqual(['Iniciar geração', 'Start generation']);
+  });
+
+  it('matches either language, exactly or as a substring', () => {
+    expect(isOneOf(' Video ', DEFAULT_LABELS.modeVideo)).toBe(true);
+    expect(isOneOf('Vídeo', DEFAULT_LABELS.modeVideo)).toBe(true);
+    expect(isOneOf('Videos', DEFAULT_LABELS.modeVideo)).toBe(false);
+    expect(exact(DEFAULT_LABELS.frameStart).test('Start')).toBe(true);
+    expect(exact(DEFAULT_LABELS.frameStart).test('Start generation')).toBe(false);
+    expect(anyOf(DEFAULT_LABELS.menuIncludeInComposer).test('add_2 Add to prompt')).toBe(true);
+    expect(anyOf(DEFAULT_LABELS.menuIncludeInComposer).test('add_2 Incluir no comando')).toBe(true);
+  });
+
+  it('escapes regex characters inside labels', () => {
+    expect(anyOf('Link to Flow on X (Twitter)').test('Link to Flow on X (Twitter)')).toBe(true);
+  });
+
+  it('reads the English price label too', () => {
+    expect(Number(new RegExp(DEFAULT_LABELS.creditCost, 'i').exec('Generating will use 12 credits')?.[1])).toBe(12);
   });
 });
 

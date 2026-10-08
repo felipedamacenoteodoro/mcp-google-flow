@@ -93,6 +93,20 @@ describe('loopbackEndpoint', () => {
   );
 });
 
+describe('SlidingWindowLimiter pacing', () => {
+  it('keeps a minimum interval between paid actions and reports the wait', () => {
+    const clock = new FakeClock(0);
+    const limiter = new SlidingWindowLimiter(10, 3_600_000, clock, 45_000);
+    limiter.take();
+    clock.t = 10_000;
+    expect(limiter.msUntilAvailable()).toBe(35_000);
+    expect(() => limiter.take()).toThrow(RateLimitedError);
+    clock.t = 45_000;
+    expect(limiter.msUntilAvailable()).toBe(0);
+    expect(() => limiter.take()).not.toThrow();
+  });
+});
+
 describe('SlidingWindowLimiter', () => {
   it('blocks bursts and frees the slot after the window', () => {
     const clock = new FakeClock(0);
@@ -120,7 +134,7 @@ describe('loadLabels', () => {
     const labels = await loadLabels(file);
     expect(labels.submit).toBe('Generate');
     expect(labels.pickerTabs.voices).toBe('Voices');
-    expect(labels.pickerTabs.images).toBe('Imagens');
+    expect(labels.pickerTabs.images).toBe('Imagens|Images');
   });
 
   it('rejects unknown keys so typos fail loudly', async () => {

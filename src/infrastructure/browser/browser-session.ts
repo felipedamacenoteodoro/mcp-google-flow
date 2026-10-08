@@ -42,6 +42,36 @@ export class BrowserSession {
     this.browser = null;
   }
 
+  /**
+   * Gets Chrome ready for the user to sign in. With a user-supplied Chrome
+   * (FLOW_MCP_CDP_URL) it just opens the page there. With the dedicated
+   * profile it closes the automated Chrome and reopens the profile as a plain
+   * window, because Google blocks sign-in in automated browsers.
+   */
+  async openForSignIn(url: string): Promise<'own-chrome' | 'plain-window'> {
+    if (this.fixedEndpoint) {
+      const page = await this.currentPage();
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.bringToFront();
+      return 'own-chrome';
+    }
+    await this.closeDedicatedChrome();
+    await this.launcher.launchForSignIn(url);
+    return 'plain-window';
+  }
+
+  /** Quits the automated Chrome running on the dedicated profile, if any. */
+  private async closeDedicatedChrome(): Promise<void> {
+    const endpoint = await this.launcher.runningEndpoint();
+    if (!endpoint || !(await isAlive(endpoint))) return;
+    const browser = this.browser?.isConnected() ? this.browser : await chromium.connectOverCDP(endpoint, { timeout: 15_000 });
+    const cdp = await browser.newBrowserCDPSession();
+    await cdp.send('Browser.close').catch(() => undefined);
+    this.browser = null;
+    this.page = null;
+    for (let i = 0; i < 40 && (await isAlive(endpoint)); i++) await new Promise((r) => setTimeout(r, 250));
+  }
+
   /** Current URL without connecting or launching anything. */
   peekUrl(): string | null {
     return this.page && !this.page.isClosed() ? this.page.url() : null;
@@ -54,7 +84,7 @@ export class BrowserSession {
       ? loopbackEndpoint(this.fixedEndpoint)
       : await this.connectableEndpoint();
 
-    this.browser = await chromium.connectOverCDP(endpoint, { timeout: 15_000 });
+    this.browser = await connectWithWindow(endpoint);
     this.browser.on('disconnected', () => {
       this.browser = null;
       this.page = null;
@@ -77,5 +107,20 @@ async function isAlive(endpoint: string): Promise<boolean> {
     return response.ok;
   } catch {
     return false;
+  }
+}
+
+/**
+ * On macOS Chrome keeps running after its last window closes, and Playwright
+ * cannot attach to a Chrome with no window. When that happens, open a blank
+ * tab through the DevTools HTTP endpoint and attach again.
+ */
+async function connectWithWindow(endpoint: string): Promise<Browser> {
+  try {
+    return await chromium.connectOverCDP(endpoint, { timeout: 15_000 });
+  } catch (error) {
+    if (!String(error).includes('Browser context management is not supported')) throw error;
+    await fetch(`${endpoint}/json/new?about:blank`, { method: 'PUT', signal: AbortSignal.timeout(5_000) });
+    return chromium.connectOverCDP(endpoint, { timeout: 15_000 });
   }
 }

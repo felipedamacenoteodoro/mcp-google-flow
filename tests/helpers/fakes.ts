@@ -13,7 +13,7 @@ import type {
 } from '../../src/application/ports.js';
 import { SpendGuard } from '../../src/application/spend-guard.js';
 import type { Asset, DownloadQuality } from '../../src/domain/asset.js';
-import type { GenerationOptions, GenerationSettings, PanelState, ReferenceCount } from '../../src/domain/generation.js';
+import type { GenerationOptions, GenerationSettings, PanelState, ReferenceCount, SubmitResult } from '../../src/domain/generation.js';
 import type { Resource, ResourceCategory } from '../../src/domain/library.js';
 import type { Prompt } from '../../src/domain/prompt.js';
 import type { ExtendAvailability, SceneAction, SceneSummary } from '../../src/domain/scene.js';
@@ -66,8 +66,9 @@ export class FakeComposer implements Composer {
   async writePrompt(_prompt: Prompt) {
     this.log.push('writePrompt');
   }
-  async submit() {
+  async submit(): Promise<SubmitResult> {
     this.log.push('submit');
+    return 'clicked';
   }
 }
 
@@ -123,6 +124,7 @@ export class FakeSceneEditor implements SceneEditor {
   }
   async submit() {
     this.log.push('scene submit');
+    return 'clicked' as const;
   }
   async download(destination: string) {
     this.log.push(`scene download ${destination}`);
@@ -140,6 +142,7 @@ export class FakeCharacterStudio implements CharacterStudio {
   }
   async submit() {
     this.log.push('character submit');
+    return 'clicked' as const;
   }
   async leave() {}
 }
@@ -189,7 +192,7 @@ export class FakeClock implements Clock {
   }
 }
 
-export const allowAll: RateLimiter = { take: () => undefined };
+export const allowAll: RateLimiter = { msUntilAvailable: () => 0, take: () => undefined };
 
 export const silentLogger: Logger = { info: () => undefined, warn: () => undefined, error: () => undefined };
 

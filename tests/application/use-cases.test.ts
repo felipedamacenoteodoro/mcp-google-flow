@@ -154,6 +154,42 @@ describe('GenerationUseCases', () => {
   });
 });
 
+describe('manual submit mode', () => {
+  it('hands the generate click to the user and says what to do next', async () => {
+    const log = new CallLog();
+    const composer = new FakeComposer(log);
+    composer.submit = async () => {
+      log.push('handed');
+      return 'handed-to-user' as const;
+    };
+    const generation = new GenerationUseCases(composer, new FakeLibrary(log, composer), guardWith(50), 'manual');
+    const quoteId = (await generation.generate({ ...video, confirm: false })).quote!.quoteId;
+    const outcome = await generation.generate({ ...video, confirm: true, quoteId });
+    expect(outcome.status).toBe('awaiting_user_click');
+    expect(outcome.nextStep).toMatch(/click the generate arrow/);
+    expect(log.calls).toContain('handed');
+  });
+
+  it('refuses confirmed shot lists, which need automatic clicks', async () => {
+    const log = new CallLog();
+    const composer = new FakeComposer(log);
+    const generation = new GenerationUseCases(composer, new FakeLibrary(log, composer), guardWith(50), 'manual');
+    await expect(generation.runShotList({ ...video, shots: [{ prompt: 'a' }], confirm: true, quoteId: 'deadbeef' })).rejects.toThrow(
+      /one shot at a time/,
+    );
+    expect(log.calls).toEqual([]);
+  });
+});
+
+describe('failure advice', () => {
+  it('explains Flow abuse protection without promising a workaround', async () => {
+    const grid = new FakeGrid(new CallLog());
+    grid.assets = [{ index: 0, kind: 'failed', name: '', ready: false, error: 'Notamos uma atividade incomum. You have not been charged.' }];
+    const assets = new AssetUseCases(grid, new FakeVault(), guardWith(10), new FakeClock());
+    await expect(assets.waitUntilSettled(1, 60_000, 30_000)).rejects.toThrow(/abuse protection.*does not try to get around it.*FLOW_MCP_SUBMIT=manual/);
+  });
+});
+
 describe('AssetUseCases', () => {
   let grid: FakeGrid;
   let guard: SpendGuard;

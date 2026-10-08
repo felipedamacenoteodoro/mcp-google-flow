@@ -1,5 +1,5 @@
 import type { Asset, DownloadQuality } from '../domain/asset.js';
-import type { GenerationOptions, GenerationSettings, PanelState, ReferenceCount } from '../domain/generation.js';
+import type { GenerationOptions, GenerationSettings, PanelState, ReferenceCount, SubmitResult } from '../domain/generation.js';
 import type { ProjectSummary, Resource, ResourceCategory } from '../domain/library.js';
 import type { FlowUrl } from '../domain/project-url.js';
 import type { Prompt } from '../domain/prompt.js';
@@ -27,7 +27,8 @@ export interface VerifiedFile {
 
 export interface ProjectNavigator {
   status(): Promise<WorkspaceStatus>;
-  openSignIn(): Promise<void>;
+  /** `plain-window`: a non-automated Chrome the user must close after signing in. */
+  openSignIn(): Promise<'own-chrome' | 'plain-window'>;
   /** Newest first, up to `limit`. */
   listProjects(limit: number): Promise<ProjectSummary[]>;
   createProject(): Promise<string>;
@@ -55,7 +56,8 @@ export interface Composer {
   clear(): Promise<void>;
   references(): Promise<ReferenceCount>;
   writePrompt(prompt: Prompt): Promise<void>;
-  submit(): Promise<void>;
+  /** Clicks generate, or in manual submit mode hands the click to the user. */
+  submit(): Promise<SubmitResult>;
 }
 
 export interface ResourceLibrary {
@@ -67,7 +69,8 @@ export interface ResourceLibrary {
 export interface CharacterStudio {
   open(): Promise<{ presets: string[]; model: string }>;
   prepare(input: { preset?: string; prompt: Prompt; model?: string }): Promise<PanelState>;
-  submit(): Promise<void>;
+  /** Clicks generate, or in manual submit mode hands the click to the user. */
+  submit(): Promise<SubmitResult>;
   leave(): Promise<void>;
 }
 
@@ -76,7 +79,8 @@ export interface SceneEditor {
   open(index: number): Promise<SceneSummary>;
   extendAvailability(): Promise<ExtendAvailability>;
   prepare(action: SceneAction, prompt: Prompt): Promise<PanelState>;
-  submit(): Promise<void>;
+  /** Clicks generate, or in manual submit mode hands the click to the user. */
+  submit(): Promise<SubmitResult>;
   /** Exports the whole timeline as one video. */
   download(destination: string): Promise<void>;
   close(): Promise<void>;
@@ -100,7 +104,9 @@ export interface FileVault {
 }
 
 export interface RateLimiter {
-  /** Throws RateLimitedError when the window is full. */
+  /** Milliseconds until a paid action would be allowed (0 = now). */
+  msUntilAvailable(): number;
+  /** Throws RateLimitedError when the window is full or the last action was too recent. */
   take(): void;
 }
 

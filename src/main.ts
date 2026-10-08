@@ -52,22 +52,22 @@ async function main(): Promise<void> {
   });
   const launcher = new ChromeLauncher(findChrome(config.chromePath), config.profileDir, systemClock);
   const browser = new BrowserSession(launcher, logger, config.cdpUrl);
-  const flow = new FlowPage(browser, await loadLabels(config.uiLabelsPath), logger);
+  const flow = new FlowPage(browser, await loadLabels(config.uiLabelsPath), logger, config.submitMode, config.language);
 
   const library = new FlowResourceLibrary(flow);
   const grid = new FlowMediaGrid(flow);
   const guard = new SpendGuard(
     new SpendLedger(config.maxCredits, config.fallbackCredits),
-    new SlidingWindowLimiter(config.paidPerHour, HOUR_MS, systemClock),
+    new SlidingWindowLimiter(config.paidPerHour, HOUR_MS, systemClock, config.minMsBetweenPaid),
     systemClock,
     logger,
   );
 
-  const server = new McpServer({ name: 'flow-studio-mcp', version: '0.3.0' });
+  const server = new McpServer({ name: 'flow-studio-mcp', version: '0.4.0' });
   const runtime = { server, mutex: new Mutex(), logger };
   registerSessionTools(runtime, new SessionUseCases(new FlowNavigator(flow)), guard);
   registerGridTools(runtime, new AssetUseCases(grid, vault, guard, systemClock));
-  registerGenerationTools(runtime, new GenerationUseCases(new FlowComposer(flow, library), library, guard));
+  registerGenerationTools(runtime, new GenerationUseCases(new FlowComposer(flow, library), library, guard, config.submitMode));
   registerLibraryTools(runtime, new LibraryUseCases(library), new CharacterUseCases(new FlowCharacterStudio(flow), guard));
   registerSceneTools(runtime, new SceneUseCases(grid, new FlowSceneEditor(flow), vault, guard));
   registerToolHostTools(runtime, new ToolUseCases(new FlowToolHost(flow), guard));
@@ -81,7 +81,7 @@ async function main(): Promise<void> {
   process.stdin.once('end', shutdown);
 
   await server.connect(new StdioServerTransport());
-  logger.info('flow-studio-mcp ready', { creditBudget: config.maxCredits, paidPerHour: config.paidPerHour });
+  logger.info('flow-studio-mcp ready', { creditBudget: config.maxCredits, paidPerHour: config.paidPerHour, submit: config.submitMode });
 }
 
 main().catch((error: unknown) => {

@@ -3,7 +3,7 @@ import { errors as playwrightErrors } from 'playwright-core';
 import type { Download, Frame, Locator, Page } from 'playwright-core';
 import type { Logger } from '../../application/ports.js';
 import { FlowUnavailableError, PreconditionFailedError } from '../../domain/errors.js';
-import type { PanelState } from '../../domain/generation.js';
+import type { PanelState, SubmitMode, SubmitResult } from '../../domain/generation.js';
 import { FLOW_ORIGIN } from '../../domain/project-url.js';
 import type { Prompt } from '../../domain/prompt.js';
 import type { BrowserSession } from '../browser/browser-session.js';
@@ -25,7 +25,40 @@ export class FlowPage {
     private readonly session: BrowserSession,
     readonly labels: FlowUiLabels,
     readonly logger: Logger,
+    readonly submitMode: SubmitMode = 'auto',
+    /** Flow interface language to force (e.g. "en"); null keeps the Google account's language. */
+    readonly language: string | null = null,
   ) {}
+
+  /** The URL with Flow's interface language forced, when one is configured. */
+  localized(url: string): string {
+    if (!this.language) return url;
+    const parsed = new URL(url);
+    parsed.searchParams.set('hl', this.language);
+    return parsed.href;
+  }
+
+  /** Navigates within Flow, keeping the configured interface language. */
+  async open(page: Page, url: string): Promise<void> {
+    await page.goto(this.localized(url), { waitUntil: 'domcontentloaded' });
+  }
+
+  /**
+   * Presses a generate button, or in manual mode brings Flow to the front and
+   * leaves that one click to the person, which is the action Flow's abuse
+   * protection wants to come from a human.
+   */
+  async pressGenerate(button: Locator, element: string): Promise<SubmitResult> {
+    const page = button.page();
+    if (this.submitMode === 'manual') {
+      await this.ui(element, () => button.waitFor({ state: 'visible', timeout: 15_000 }));
+      await page.bringToFront();
+      return 'handed-to-user';
+    }
+    await this.ui(element, () => button.click());
+    await page.waitForTimeout(APP_SETTLE_MS);
+    return 'clicked';
+  }
 
   get connected(): boolean {
     return this.session.connected;
@@ -33,6 +66,10 @@ export class FlowPage {
 
   peekUrl(): string | null {
     return this.session.peekUrl();
+  }
+
+  openForSignIn(url: string): Promise<'own-chrome' | 'plain-window'> {
+    return this.session.openForSignIn(this.localized(url));
   }
 
   page(): Promise<Page> {
@@ -64,7 +101,7 @@ export class FlowPage {
     const page = await this.projectPage();
     const root = await this.projectRoot();
     if (page.url().split('?')[0] !== root) {
-      await page.goto(root, { waitUntil: 'domcontentloaded' });
+      await this.open(page, root);
       await page.waitForTimeout(APP_SETTLE_MS);
     }
     return page;
@@ -76,13 +113,14 @@ export class FlowPage {
     }
   }
 
+  /** Elements whose aria-label is any of the label's alternatives ("A|B"). */
   byAria(scope: Page | Locator | Frame, label: string, tag = 'button'): Locator {
-    // Quoted as a CSS string so a label can never alter the selector.
-    return scope.locator(`${tag}[aria-label=${JSON.stringify(label)}]`);
+    // Each alternative is quoted as a CSS string so a label can never alter the selector.
+    return scope.locator(alternatives(label).map((a) => `${tag}[aria-label=${JSON.stringify(a)}]`).join(', '));
   }
 
   menuItem(page: Page, text: string | RegExp): Locator {
-    return page.locator(`${OVERLAY} [role=menuitem]`, { hasText: text }).first();
+    return page.locator(`${OVERLAY} [role=menuitem]`, { hasText: typeof text === 'string' ? anyOf(text) : text }).first();
   }
 
   /** Closes menus and popovers by clicking an empty corner (Escape leaves some triggers stuck). */
@@ -168,8 +206,27 @@ export function isSignedInUrl(url: string, signedOutPath: string): boolean {
   return url.startsWith(FLOW_ORIGIN) && !new URL(url).pathname.startsWith(signedOutPath);
 }
 
-export function exact(text: string): RegExp {
-  return new RegExp(`^\\s*${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`);
+/** The alternatives of a label: "Iniciar geração|Start generation" -> both strings. */
+export function alternatives(label: string): string[] {
+  return label.split('|').map((a) => a.trim()).filter(Boolean);
+}
+
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Matches text containing any alternative of the label. */
+export function anyOf(label: string): RegExp {
+  return new RegExp(alternatives(label).map(escapeRegex).join('|'));
+}
+
+/** Matches text that is exactly one of the label's alternatives. */
+export function exact(label: string): RegExp {
+  return new RegExp(`^\\s*(?:${alternatives(label).map(escapeRegex).join('|')})\\s*$`);
+}
+
+export function isOneOf(text: string, label: string): boolean {
+  return alternatives(label).includes(text.trim());
 }
 
 /**

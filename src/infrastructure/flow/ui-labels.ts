@@ -6,8 +6,11 @@ import { z } from 'zod';
  * changes wording and language without notice; users fix that with a JSON
  * override (FLOW_MCP_UI_LABELS) instead of patching code.
  *
- * Defaults match the Portuguese UI as inspected on 2026-09-29, except where a
- * value is marked UNVERIFIED. Strings used as patterns are regular expressions.
+ * Each label lists its alternatives separated by "|", so the same build works
+ * with Flow in Portuguese or English (and any language added through the
+ * override). Checked against both languages on 2026-10-08, except values
+ * marked "EN unverified". A few fields are regular expressions (newProject,
+ * failedTile, creditCost, quality); those say so next to their schema entry.
  */
 const schema = z
   .object({
@@ -75,61 +78,65 @@ const schema = z
 export type FlowUiLabels = z.infer<typeof schema>;
 
 export const DEFAULT_LABELS: FlowUiLabels = {
-  newProject: 'New project|Novo projeto',
-  openProjectLink: 'Abrir projeto',
+  newProject: 'Novo projeto|New project',
+  openProjectLink: 'Abrir projeto|Open project',
   signedOutPath: '/about',
-  agentToggle: 'Agente',
+  agentToggle: 'Agente|Agent',
 
-  addFilesMenu: 'Menu para adicionar arquivos',
-  uploadAction: 'Enviar',
-  acceptRights: 'Concordo',
-  tileMenu: 'Mais opções',
-  menuAddToScene: 'Adicionar ao cenário',
-  menuNewScene: 'Nova cena',
-  menuIncludeInComposer: 'Incluir no comando',
-  menuDownload: 'Fazer o download',
+  addFilesMenu: 'Menu para adicionar arquivos|Add media menu',
+  uploadAction: 'Enviar|Upload',
+  acceptRights: 'Concordo|I agree', //                                EN unverified
+  tileMenu: 'Mais opções|More options',
+  menuAddToScene: 'Adicionar ao cenário|Add to scene', //             EN unverified
+  menuNewScene: 'Nova cena|New scene',
+  menuIncludeInComposer: 'Incluir no comando|Add to prompt',
+  menuDownload: 'Fazer o download|Download',
   failedTile: '^(warning\\s+)?(Falha|Failed)\\b',
-  navAllMedia: 'Todas as mídias',
-  navScenes: 'Cenas',
-  quality: { standard: '720p|Tamanho original|Original size', '1080p': '1080p', '4k': '4K' },
+  navAllMedia: 'Todas as mídias|All media',
+  navScenes: 'Cenas|Scenes',
+  quality: {
+    standard: '720p|Tamanho original|Original size',
+    '1080p': '1080p|2K',
+    '4k': '4K',
+  },
 
-  settingsTrigger: 'Gatilho de configurações',
-  modeImage: 'Imagem',
-  modeVideo: 'Vídeo',
+  settingsTrigger: 'Gatilho de configurações|Settings trigger',
+  modeImage: 'Imagem|Image',
+  modeVideo: 'Vídeo|Video',
   videoInputFrames: 'Frames',
-  videoInputElements: 'Elementos',
-  modelFamily: 'Selecionar família de modelos',
+  videoInputElements: 'Elementos|Ingredients',
+  modelFamily: 'Selecionar família de modelos|Select model family',
   creditCost: '(\\d+)\\s*(?:créditos?|credits?)',
-  addElements: 'Adicionar elementos à caixa de comando',
-  frameStart: 'Início',
-  frameEnd: 'Fim',
-  referenceAltPrefix: 'Imagem do elemento',
-  referenceVideoMarker: 'vídeo',
-  clearComposer: 'Apagar comando',
-  submit: 'Iniciar geração',
+  addElements: 'Adicionar elementos à caixa de comando|Add ingredients to the prompt box',
+  frameStart: 'Início|Start',
+  frameEnd: 'Fim|End',
+  referenceAltPrefix: 'Imagem do elemento|Ingredient image',
+  referenceVideoMarker: 'vídeo|video',
+  clearComposer: 'Apagar comando|Clear prompt',
+  submit: 'Iniciar geração|Start generation',
 
-  pickerSearch: 'Pesquisar recursos',
-  pickerInclude: 'Incluir no comando',
+  pickerSearch: 'Pesquisar recursos|Search assets',
+  pickerInclude: 'Incluir no comando|Add to prompt',
   pickerTabs: {
-    all: 'Tudo',
-    images: 'Imagens',
-    videos: 'Vídeos',
-    voices: 'Vozes',
-    characters: 'Personagens',
-    avatars: 'Avatares',
-    uploads: 'Envios',
+    all: 'Tudo|All',
+    images: 'Imagens|Images',
+    videos: 'Vídeos|Videos',
+    voices: 'Vozes|Voices',
+    characters: 'Personagens|Characters',
+    avatars: 'Avatares|Avatars',
+    uploads: 'Envios|Uploads',
   },
 
   characterPath: '/character',
-  back: 'Voltar',
+  back: 'Voltar|Go back',
 
-  addClip: 'Adicionar clipe',
-  extendItem: 'Estender',
-  downloadScene: 'Baixar cena',
-  sceneDone: 'Edição da cena concluída',
+  addClip: 'Adicionar clipe|Add clip', //                             EN unverified
+  extendItem: 'Estender|Extend', //                                   EN unverified
+  downloadScene: 'Baixar cena|Download scene', //                     EN unverified
+  sceneDone: 'Edição da cena concluída|Done editing scene', //        EN unverified
 
   toolsPath: '/tools',
-  toolTabs: { mine: 'Minhas ferramentas', community: 'Comunidade', templates: 'Modelos' },
+  toolTabs: { mine: 'Minhas ferramentas|My Tools', community: 'Comunidade|Community', templates: 'Modelos|Templates' },
   toolFrameHost: '.usercontent.goog',
   remixPrefix: 'Remix of ',
 };
